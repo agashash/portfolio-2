@@ -38,7 +38,6 @@ document.addEventListener("DOMContentLoaded", () => {
         loadingScreen.style.display = "none";
       }, 600);
 
-      // Safe check so it doesn't throw error if main-page ID isn't present
       if (mainPage) {
         mainPage.classList.add("visible");
       }
@@ -146,36 +145,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Trigger once on initial load so above-the-fold content shows immediately
+  // Trigger once on initial load
   handleScrollReveal();
 
   // ===================================================
-  // 5. NAVBAR ACTIVE STATE & SCROLL-SPY
+  // 5. NAVBAR ACTIVE STATE & SMOOTH SCROLL (Mobile & Desktop)
   // ===================================================
   const navLinks = document.querySelectorAll('.ul-list li a');
   const sections = document.querySelectorAll('section');
 
   function removeActive() {
-    navLinks.forEach(link => {
-      if (link.parentElement) {
-        link.parentElement.classList.remove('active');
-      }
-    });
+    document.querySelectorAll('.ul-list li').forEach(li => li.classList.remove('active'));
   }
 
   navLinks.forEach(link => {
-    link.addEventListener('click', e => {
-      const targetId = link.getAttribute('href');
+    link.addEventListener('click', function(e) {
+      const targetId = this.getAttribute('href');
       if (targetId && targetId.startsWith('#')) {
         e.preventDefault();
-        const targetSection = document.getElementById(targetId.substring(1));
+        const targetSection = document.querySelector(targetId);
         if (targetSection) {
+          // Accurate offset calculation for both mobile and desktop
+          const offsetTop = targetSection.getBoundingClientRect().top + window.pageYOffset - 70;
+          
           window.scrollTo({
-            top: targetSection.offsetTop - 70,
+            top: offsetTop,
             behavior: 'smooth'
           });
+
           removeActive();
-          link.parentElement.classList.add('active');
+          this.closest('li').classList.add('active');
         }
       }
     });
@@ -192,8 +191,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (scrollPos >= top && scrollPos < top + height) {
         removeActive();
         const activeLink = document.querySelector(`.ul-list li a[href="#${section.id}"]`);
-        if (activeLink && activeLink.parentElement) {
-          activeLink.parentElement.classList.add('active');
+        if (activeLink && activeLink.closest('li')) {
+          activeLink.closest('li').classList.add('active');
         }
       }
     });
@@ -210,64 +209,61 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ===================================================
-  // 6. CONTACT FORM SUBMISSION
+  // 6. FORMSPREE AJAX CONTACT FORM SUBMISSION
   // ===================================================
-  const contactForm = document.getElementById('contact-form');
-  if (contactForm) {
-    contactForm.addEventListener('submit', (e) => {
+  const form = document.getElementById('contact-form');
+  const formStatus = document.getElementById('form-status');
+
+  if (form) {
+    const btn = form.querySelector('.btn-send');
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const submitBtn = contactForm.querySelector('.btn-send');
-      const originalText = submitBtn.innerText;
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Sending...';
 
-      submitBtn.disabled = true;
-      submitBtn.innerText = "Sending Message...";
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { 'Accept': 'application/json' }
+        });
 
+        if (res.ok) {
+          btn.textContent = 'Sent Successfully!';
+          btn.style.backgroundColor = '#16a34a'; // Green color
+          form.reset();
+
+          if (formStatus) {
+            formStatus.style.display = 'block';
+            formStatus.style.color = '#16a34a';
+            formStatus.textContent = 'Thank you! Your project brief has been sent. I will reply within 1 hour!';
+          }
+        } else {
+          throw new Error('Form submission failed');
+        }
+      } catch (err) {
+        btn.textContent = 'Failed to Send!';
+        btn.style.backgroundColor = '#dc2626'; // Red color
+
+        if (formStatus) {
+          formStatus.style.display = 'block';
+          formStatus.style.color = '#dc2626';
+          formStatus.textContent = 'Oops! There was a problem sending your message. Please try again or email directly.';
+        }
+      }
+
+      // Reset button after 3.5 seconds
       setTimeout(() => {
-        alert("Thank you! Your message has been sent to Anand M. I will get back to you within 1 hour!");
-        contactForm.reset();
-        submitBtn.disabled = false;
-        submitBtn.innerText = originalText;
-      }, 1000);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.backgroundColor = '';
+        if (formStatus) {
+          formStatus.style.display = 'none';
+        }
+      }, 3500);
     });
   }
 
 });
-
-
-const form = document.getElementById('contact-form');
-
-if (form) {
-  const btn = form.querySelector('.btn-send');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
-
-    try {
-      const res = await fetch(form.action, {
-        method: 'POST',
-        body: new FormData(form),
-        headers: { 'Accept': 'application/json' }
-      });
-
-      if (res.ok) {
-        btn.textContent = 'Sent!';
-        btn.style.backgroundColor = '#16a34a'; // பச்சை நிறம்
-        form.reset();
-      } else {
-        btn.textContent = 'Error!';
-        btn.style.backgroundColor = '#dc2626'; // சிவப்பு நிறம்
-      }
-    } catch (err) {
-      btn.textContent = 'Error!';
-      btn.style.backgroundColor = '#dc2626';
-    }
-
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = 'Send Brief & Get Quote';
-      btn.style.backgroundColor = '#4f46e5';
-    }, 3000);
-  });
-}
